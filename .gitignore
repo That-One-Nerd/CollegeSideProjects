@@ -1,0 +1,15 @@
+# Python cache files.
+*/__pycache__/
+*/venv/
+
+# Build files.
+*/bin/
+*/obj/
+*/*/bin/
+*/*/obj/
+convimg.out
+
+# Other stuff.
+.DS_Store
+*/.vs/
+*.zip

@@ -5,6 +5,8 @@ namespace PropositionReducer;
 
 public class InputArray(char[] names) : IEnumerable<KeyValuePair<char, bool>>
 {
+    public int Count => names.Length;
+
     private readonly char[] names = names;
     private readonly BitArray values = new(names.Length);
 
@@ -13,6 +15,11 @@ public class InputArray(char[] names) : IEnumerable<KeyValuePair<char, bool>>
         get => Get(name);
         set => Set(name, value);
     }
+    public bool this[int index]
+    {
+        get => values[index];
+        set => values[index] = value;
+    }
 
     public IEnumerator<KeyValuePair<char, bool>> GetEnumerator()
     {
@@ -20,6 +27,7 @@ public class InputArray(char[] names) : IEnumerable<KeyValuePair<char, bool>>
     }
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    public char GetName(int index) => names[index];
     public bool Get(char name)
     {
         for (int i = 0; i < names.Length; i++)

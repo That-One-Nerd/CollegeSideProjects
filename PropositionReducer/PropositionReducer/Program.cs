@@ -10,63 +10,130 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        string expStr1, expStr2;
+        List<string> expStrs = [];
         if (args.Length == 0)
         {
             Console.Write("Enter a logical expression in TeX format\n > ");
-            expStr1 = Console.ReadLine()!;
+            expStrs.Add(Console.ReadLine()!);
 
             Console.Write("\nLeave blank to reduce, or enter a second expression to compute equivalence\n > ");
-            expStr2 = Console.ReadLine()!;
-        }
-        else
-        {
-            StringBuilder sum = new();
-            for (int i = 0; i < args.Length; i++) sum.Append(args[i]);
-            string sumStr = sum.ToString();
-
-            const string equivStr = @"\equiv";
-            int equivPlace = sumStr.IndexOf(equivStr);
-            if (equivPlace == -1)
+            string? temp = Console.ReadLine();
+            while (!string.IsNullOrEmpty(temp))
             {
-                expStr1 = sumStr;
-                expStr2 = "";
-            }
-            else
-            {
-                expStr1 = sumStr[..equivPlace];
-                expStr2 = sumStr[(equivPlace + equivStr.Length)..];
+                expStrs.Add(temp);
+                Console.Write("\nLeave blank to continue, or enter another expression to compute truth tables\n > ");
+                temp = Console.ReadLine();
             }
         }
+        else expStrs = [.. args];
 
-        int index = 0;
+        int index;
         List<char> vars = [];
-        Expression exp1 = ParseExpression(expStr1, ref index, false, ref vars);
-        Expression? exp2;
-
-        if (string.IsNullOrEmpty(expStr2)) exp2 = null;
-        else
+        Expression[] exps = new Expression[expStrs.Count];
+        for (int i = 0; i < exps.Length; i++)
         {
             index = 0;
-            exp2 = ParseExpression(expStr2, ref index, false, ref vars);
+            exps[i] = ParseExpression(expStrs[i], ref index, false, ref vars);
         }
 
+        vars.Sort();
         InputArray inputs = new([.. vars]);
-        Console.WriteLine($"\nExpressions:\n{exp1}");
-        if (exp2 is not null) Console.WriteLine(exp2);
+
+        Console.OutputEncoding = Encoding.Unicode;
+        Console.WriteLine($"\nExpressions:");
+        for (int i = 0; i < exps.Length; i++) Console.WriteLine(exps[i]);
         Console.WriteLine($"\nWith Variables:\n{inputs.NamesToString()}");
 
-        if (exp2 is null) ReduceExpression(exp1, inputs);
-        else CheckExpressionEquivalence(exp1, exp2, inputs);
+        Console.WriteLine("\n---\n");
+
+        if (exps.Length == 1) ReduceExpression(exps[0], inputs);
+        else if (exps.Length == 2) CheckExpressionEquivalence(exps[0], exps[1], inputs);
+        else PrintTruthTables(exps, inputs);
     }
 
     public static void ReduceExpression(Expression exp, InputArray inputs)
     {
+        Console.WriteLine($"Expression Truth Table:\n{GetTruthTable([exp], inputs, false)}");
+
         // TODO
     }
     public static void CheckExpressionEquivalence(Expression exp1, Expression exp2, InputArray inputs)
     {
-        // TODO
+        // Compute equivalence.
+        bool equivalent = true;
+        int combos = 1 << inputs.Count;
+        for (int c = 0; c < combos; c++)
+        {
+            // Set input values.
+            for (int i = 0, mask = 1; mask < combos; i++, mask <<= 1)
+            {
+                bool val = (c & mask) > 0;
+                inputs[i] = val;
+            }
+
+            // Compute expressions.
+            if (exp1.Evaluate(inputs) != exp2.Evaluate(inputs))
+            {
+                equivalent = false;
+                break;
+            }
+        }
+
+        if (equivalent) Console.WriteLine("The two expressions are \x1b[3;32mEQUIVALENT\x1b[0m.");
+        else Console.WriteLine("The two expressions are \x1b[3;31mNOT EQUIVALENT\x1b[0m.");
+        Console.WriteLine(GetTruthTable([exp1, exp2], inputs, true));
+    }
+    public static void PrintTruthTables(Expression[] exps, InputArray inputs)
+    {
+        Console.WriteLine($"Truth tables for the given expressions:");
+        Console.WriteLine(GetTruthTable(exps, inputs, false));
+    }
+
+    private static string GetTruthTable(Expression[] exps, InputArray inputs, bool printDifference)
+    {
+        const string True = "\x1b[42m T \x1b[0m",
+                     False = " F ",
+                     UnequalTrue = "\x1b[30;43m T \x1b[0m",
+                     UnequalFalse = "\x1b[33m F \x1b[0m";
+
+        StringBuilder truth = new("|");
+        for (int i = 0; i < inputs.Count; i++) truth.Append($" {inputs.GetName(i)} |");
+        if (exps.Length == 1) truth.Append(" Result |\n|");
+        else
+        {
+            for (int i = 0; i < exps.Length; i++) truth.Append($" Expr.{i} |");
+            truth.Append("\n|");
+        }
+        for (int i = 0; i < inputs.Count; i++) truth.Append("---|");
+
+        // Slightly breaks at 10+ expressions. But who would make that many??
+        for (int i = 0; i < exps.Length; i++) truth.Append("--------|");
+        truth.AppendLine();
+
+        int combos = 1 << inputs.Count;
+        for (int c = 0; c < combos; c++)
+        {
+            truth.Append('|');
+
+            // Set input values and print input for truth table.
+            for (int i = 0, mask = 1; mask < combos; i++, mask <<= 1)
+            {
+                bool val = (c & mask) > 0;
+                inputs[i] = val;
+                truth.Append($"{(val ? True : False)}|");
+            }
+
+            // Compute and print expression results.
+            bool last = false;
+            for (int e = 0; e < exps.Length; e++)
+            {
+                bool result = exps[e].Evaluate(inputs);
+                if (e == 0) last = result;
+                truth.Append($"    {((result == last || !printDifference) ? (result ? True : False) : (result ? UnequalTrue : UnequalFalse))} |");
+            }
+            truth.AppendLine();
+        }
+        return truth.ToString();
     }
 
     private static readonly List<UnaryOperatorInfo> unaryOperators = [
@@ -77,7 +144,7 @@ public static class Program
         (["lor", "or", "v"], (x, y) => new LogicalOrOperator(x, y)),
         (["to", "implies", "->"], (x, y) => new ImpliesOperator(x, y)),
         (["gets", "<-"], (x, y) => new ImpliesOperator(y, x)), // Tricky!
-        (["leftrightarrow", "biconditional", "bicon", "bi", "begets", "<->"], (x, y) => new BiConditionalOperator(x, y)),
+        (["leftrightarrow", "biconditional", "iff", "<->"], (x, y) => new BiConditionalOperator(x, y)),
     ];
 
     public static Expression ParseExpression(ReadOnlySpan<char> str, ref int index, bool inParen, ref List<char> vars)

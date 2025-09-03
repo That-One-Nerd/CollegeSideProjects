@@ -14,15 +14,15 @@ public static class Program
         if (args.Length == 0)
         {
             Console.Write("Enter a logical expression in TeX format\n > ");
-            expStrs.Add(Console.ReadLine()!);
+            expStrs.Add(ReadLine());
 
             Console.Write("\nLeave blank to reduce, or enter a second expression to compute equivalence\n > ");
-            string? temp = Console.ReadLine();
+            string? temp = ReadLine();
             while (!string.IsNullOrEmpty(temp))
             {
                 expStrs.Add(temp);
                 Console.Write("\nLeave blank to continue, or enter another expression to compute truth tables\n > ");
-                temp = Console.ReadLine();
+                temp = ReadLine();
             }
         }
         else expStrs = [.. args];
@@ -233,5 +233,157 @@ public static class Program
             }
             return str[start..index].Trim();
         }
+    }
+
+    private static readonly List<char> formatVariables = [];
+    public static string ReadLine()
+    {
+        StringBuilder result = new();
+        ConsoleKeyInfo key;
+
+        int charIndex = 0;
+
+        int initialTop = Console.CursorTop,
+            initialLeft = Console.CursorLeft;
+
+        Console.CursorVisible = true;
+
+        bool cont = true;
+        while (cont)
+        {
+            int extraSpace = 0, parenRemainder = 0;
+            key = Console.ReadKey(true);
+            if (char.IsControl(key.KeyChar))
+            {
+                switch (key.Key)
+                {
+                    case ConsoleKey.Enter:
+                        cont = false;
+                        break;
+
+                    case ConsoleKey.LeftArrow:
+                        if (charIndex > 0) charIndex--;
+                        break;
+
+                    case ConsoleKey.RightArrow:
+                        if (charIndex < result.Length) charIndex++;
+                        break;
+
+                    case ConsoleKey.Backspace:
+                        if (charIndex > 0)
+                        {
+                            result.Remove(charIndex - 1, 1);
+                            charIndex--;
+                            extraSpace = 1;
+                        }
+                        break;
+
+                    case ConsoleKey.Delete:
+                        if (charIndex < result.Length)
+                        {
+                            result.Remove(charIndex, 1);
+                            extraSpace = 1;
+                        }
+                        break;
+
+                    case ConsoleKey.Escape:
+                        result.Clear();
+                        extraSpace = charIndex;
+                        charIndex = 0;
+                        break;
+                }
+            }
+            else
+            {
+                if (key.KeyChar == '(') parenRemainder++;
+                else if (key.KeyChar == ')') parenRemainder--;
+                result.Insert(charIndex, key.KeyChar);
+                charIndex++;
+            }
+
+            StringBuilder formatted = ColorizeString(result, parenRemainder);
+            Console.SetCursorPosition(initialLeft, initialTop);
+            Console.Write(formatted.Append(' ', extraSpace));
+
+            int cursorLeft = initialLeft + charIndex,
+                cursorTop = initialTop;
+            while (cursorLeft > Console.WindowWidth - 1)
+            {
+                cursorLeft -= Console.WindowWidth;
+                cursorTop++;
+            }
+            
+            Console.SetCursorPosition(cursorLeft, cursorTop);
+        }
+
+        static StringBuilder ColorizeString(StringBuilder str, int parenRemainder)
+        {
+            const string CommandColor = "\x1b[0;1;35m";
+            const string BadColor = "\x1b[0;31m";
+            string[] parenColors = [
+                "\x1b[0;93m",
+                "\x1b[0;95m",
+                "\x1b[0;36m"
+            ];
+            string[] varColors = [
+                "\x1b[0;3;91m",
+                "\x1b[0;3;92m",
+                "\x1b[0;3;93m",
+                "\x1b[0;3;94m",
+                "\x1b[0;3;95m",
+                "\x1b[0;3;96m",
+                "\x1b[0;3;97m"
+            ];
+
+            StringBuilder result = new();
+            int parenIndex = 0;
+            bool noformat = false;
+            for (int i = 0; i < str.Length; i++)
+            {
+                char c = str[i];
+                if (c == '(')
+                {
+                    noformat = false;
+                    if (parenIndex < int.Max(parenRemainder, 0)) result.Append(BadColor);
+                    else result.Append(parenColors[parenIndex % parenColors.Length]);
+                    parenIndex++;
+                }
+                else if (c == ')')
+                {
+                    noformat = false;
+                    parenIndex--;
+                    if (parenIndex < 0) result.Append(BadColor);
+                    else result.Append(parenColors[parenIndex % parenColors.Length]);
+                }
+                else if (c == '\\')
+                {
+                    noformat = true;
+                    result.Append(CommandColor);
+                }
+                else if (c == ' ')
+                {
+                    noformat = false;
+                    result.Append("\x1b[0m");
+                }
+                else if (char.IsLetter(c))
+                {
+                    if (!noformat)
+                    {
+                        int varIndex = formatVariables.IndexOf(c);
+                        if (varIndex == -1)
+                        {
+                            varIndex = formatVariables.Count;
+                            formatVariables.Add(c);
+                        }
+                        result.Append(varColors[varIndex % varColors.Length]);
+                    }
+                    noformat = true;
+                }
+                result.Append(c);
+            }
+            return result.Append("\x1b[0m");
+        }
+
+        return result.ToString();
     }
 }

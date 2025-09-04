@@ -320,6 +320,8 @@ public static class Program
         {
             const string CommandColor = "\x1b[0;1;35m";
             const string BadColor = "\x1b[0;31m";
+            const string TrueColor = "\x1b[0;32m";
+            const string FalseColor = "\x1b[0;31m";
             string[] parenColors = [
                 "\x1b[0;93m",
                 "\x1b[0;95m",
@@ -369,13 +371,18 @@ public static class Program
                 {
                     if (!noformat)
                     {
-                        int varIndex = formatVariables.IndexOf(c);
-                        if (varIndex == -1)
+                        if (c == 'T') result.Append(TrueColor);
+                        else if (c == 'F') result.Append(FalseColor);
+                        else
                         {
-                            varIndex = formatVariables.Count;
-                            formatVariables.Add(c);
+                            int varIndex = formatVariables.IndexOf(c);
+                            if (varIndex == -1)
+                            {
+                                varIndex = formatVariables.Count;
+                                formatVariables.Add(c);
+                            }
+                            result.Append(varColors[varIndex % varColors.Length]);
                         }
-                        result.Append(varColors[varIndex % varColors.Length]);
                     }
                     noformat = true;
                 }

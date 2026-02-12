@@ -82,7 +82,7 @@ internal static partial class Program
         return graph;
     }
 
-    [GeneratedRegex(@"^--> q([0-9]+)$")] private static partial Regex EntryRegex();
+    [GeneratedRegex(@"^enter q([0-9]+)$")] private static partial Regex EntryRegex();
     [GeneratedRegex(@"^q([0-9]+) -- (?:(.),? )+--> q([0-9]+)$")] private static partial Regex TransitionRegex();
-    [GeneratedRegex(@"^q([0-9]+) -->$")] private static partial Regex AcceptRegex();
+    [GeneratedRegex(@"^accept q([0-9]+)$")] private static partial Regex AcceptRegex();
 }

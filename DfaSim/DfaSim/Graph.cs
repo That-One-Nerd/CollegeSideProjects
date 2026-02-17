@@ -187,4 +187,19 @@ public class Graph
         }
         return false;
     }
+
+    public Graph Union(Graph other)
+    {
+        Graph result = new();
+        foreach (State qa in States.Values)
+        {
+            foreach (State qb in other.States.Values)
+            {
+                int newId = qa.Id * other.States.Count + qb.Id;
+                State combined = new(newId);
+                
+                // TODO
+            }
+        }
+    }
 }

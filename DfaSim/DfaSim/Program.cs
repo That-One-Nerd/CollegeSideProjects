@@ -25,7 +25,15 @@ internal static partial class Program
         // Print some stats.
         Console.WriteLine($"Graph has {graph.States.Count} states");
         Console.WriteLine($"Alphabet is \"{graph.Alphabet()}\"");
-        Console.WriteLine($"\nMermaid is:\n{graph.MermaidSyntax()}");
+        Console.WriteLine($"\nMermaid is:\n{graph.FlowchartSyntax()}");
+
+        Console.WriteLine("\n\n");
+        while (true)
+        {
+            string str = Console.ReadLine()!;
+            if (graph.Test(str)) Console.WriteLine("Pass");
+            else Console.WriteLine("Fail");
+        }
     }
 
     private static Graph ParseDfa(IEnumerable<string> rules)
@@ -55,15 +63,9 @@ internal static partial class Program
                 for (int j = 0; j < match.Groups[2].Captures.Count; j++)
                 {
                     char c = match.Groups[2].Captures[j].Value[0];
-                    if (graph.TransitionStartsWith(c, leftState.Id)) // Does leftState already use c?
-                    {
-                        Console.WriteLine($"Rule {i}: q{leftState.Id} -- {c} --> cannot be defined more than once.");
-                        continue;
-                    }
-                    else
-                    {
-                        leftState.Transitions.Add(c, rightState.Id);
-                    }
+                    if (leftState.Transitions.TryGetValue(c, out List<int>? outs))
+                        outs.Add(rightState.Id);
+                    else leftState.Transitions.Add(c, [rightState.Id]);
                 }
             }
             else if ((match = AcceptRegex().Match(rule)).Success)
@@ -78,7 +80,6 @@ internal static partial class Program
                 continue;
             }
         }
-        graph.SortStates();
         return graph;
     }
 

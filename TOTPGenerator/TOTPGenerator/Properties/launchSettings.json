@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TOTPGenerator": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
